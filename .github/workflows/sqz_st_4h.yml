@@ -1,0 +1,37 @@
+name: Alert Squeeze + Supertrend 4H
+
+on:
+  schedule:
+    # Candle 4h Gate close jam 00,04,08,12,16,20 UTC (07,11,15,19,23,03 WIB).
+    # Cek tiap 10 menit pada jam itu dan 1 jam sesudahnya (jaga-jaga GitHub telat). Pesan tidak pernah dobel.
+    - cron: "*/10 0,1,4,5,8,9,12,13,16,17,20,21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sqz-st-4h
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - name: Scan dan kirim alert
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python alert_sqz_st_4h.py github
+      - name: Simpan riwayat
+        run: |
+          git config user.name "sqz-bot"
+          git config user.email "sqz-bot@users.noreply.github.com"
+          git add sqz_st_sudah_terkirim.json
+          git diff --cached --quiet || (git commit -m "update riwayat alert" && git pull --rebase -q && git push -q)
